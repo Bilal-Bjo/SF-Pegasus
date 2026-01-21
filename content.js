@@ -86,8 +86,11 @@ const SETUP_ITEMS = [
   { name: 'Sandboxes', path: '/lightning/setup/DataManagementCreateTestInstance/home', keywords: 'sandboxes environments' },
 ];
 
+const API_VERSION = 'v59.0';
 let overlay = null;
 let isVisible = false;
+let currentMode = 'setup'; // 'setup' or 'user'
+let searchTimeout = null;
 
 function createOverlay() {
   if (overlay) return overlay;
@@ -97,9 +100,14 @@ function createOverlay() {
   overlay.innerHTML = `
     <div class="sfp-backdrop"></div>
     <div class="sfp-modal">
+      <div class="sfp-mode-tabs">
+        <button class="sfp-tab active" data-mode="setup">Setup</button>
+        <button class="sfp-tab" data-mode="user">Users</button>
+      </div>
       <input type="text" class="sfp-input" placeholder="Search Setup..." autofocus>
       <div class="sfp-results"></div>
       <div class="sfp-footer">
+        <span><kbd>Tab</kbd> switch mode</span>
         <span><kbd>↑↓</kbd> navigate</span>
         <span><kbd>↵</kbd> open</span>
         <span><kbd>esc</kbd> close</span>
@@ -144,6 +152,30 @@ function createOverlay() {
       border: 1px solid #222;
       box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
       overflow: hidden;
+    }
+    .sfp-mode-tabs {
+      display: flex;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    .sfp-tab {
+      flex: 1;
+      padding: 10px 16px;
+      background: transparent;
+      border: none;
+      color: #555;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.15s, background 0.15s;
+      font-family: inherit;
+    }
+    .sfp-tab:hover {
+      color: #888;
+      background: #111;
+    }
+    .sfp-tab.active {
+      color: #00d9ff;
+      background: #111;
     }
     .sfp-input {
       width: 100%;
@@ -198,20 +230,41 @@ function createOverlay() {
       color: #666;
       flex-shrink: 0;
     }
+    .sfp-item-icon.user-icon {
+      background: #1a2a1a;
+      color: #4ade80;
+    }
+    .sfp-item-icon.inactive {
+      background: #2a1a1a;
+      color: #f87171;
+    }
+    .sfp-item-info {
+      flex: 1;
+      min-width: 0;
+    }
     .sfp-item-name {
       font-size: 14px;
       color: #e5e5e5;
     }
-    .sfp-item-path {
+    .sfp-item-meta {
       font-size: 11px;
       color: #444;
       margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .sfp-empty {
       padding: 32px 20px;
       text-align: center;
       color: #444;
       font-size: 14px;
+    }
+    .sfp-loading {
+      padding: 32px 20px;
+      text-align: center;
+      color: #555;
+      font-size: 13px;
     }
     .sfp-footer {
       padding: 10px 20px;
@@ -232,6 +285,22 @@ function createOverlay() {
       color: #fff;
       font-weight: 500;
     }
+    .sfp-badge {
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 3px;
+      background: #1a1a1a;
+      color: #666;
+      margin-left: 8px;
+    }
+    .sfp-badge.active {
+      background: #1a2a1a;
+      color: #4ade80;
+    }
+    .sfp-badge.inactive {
+      background: #2a1a1a;
+      color: #f87171;
+    }
   `;
 
   document.head.appendChild(style);
@@ -240,9 +309,31 @@ function createOverlay() {
   const input = overlay.querySelector('.sfp-input');
   const results = overlay.querySelector('.sfp-results');
   const backdrop = overlay.querySelector('.sfp-backdrop');
+  const tabs = overlay.querySelectorAll('.sfp-tab');
 
   let selectedIndex = 0;
   let filteredItems = [];
+
+  function setMode(mode) {
+    currentMode = mode;
+    tabs.forEach(tab => {
+      tab.classList.toggle('active', tab.dataset.mode === mode);
+    });
+    input.placeholder = mode === 'setup' ? 'Search Setup...' : 'Search users by name or email...';
+    input.value = '';
+    selectedIndex = 0;
+
+    if (mode === 'setup') {
+      renderSetupResults('');
+    } else {
+      results.innerHTML = '<div class="sfp-empty">Type to search users...</div>';
+      filteredItems = [];
+    }
+  }
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => setMode(tab.dataset.mode));
+  });
 
   function getInitials(name) {
     return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
@@ -254,7 +345,7 @@ function createOverlay() {
     return text.replace(regex, '<span class="sfp-highlight">$1</span>');
   }
 
-  function render(query = '') {
+  function renderSetupResults(query = '') {
     const q = query.toLowerCase().trim();
 
     if (!q) {
@@ -273,18 +364,85 @@ function createOverlay() {
 
     selectedIndex = 0;
     results.innerHTML = filteredItems.map((item, i) => `
-      <div class="sfp-item ${i === 0 ? 'selected' : ''}" data-index="${i}">
+      <div class="sfp-item ${i === 0 ? 'selected' : ''}" data-index="${i}" data-type="setup">
         <span class="sfp-item-icon">${getInitials(item.name)}</span>
-        <div>
+        <div class="sfp-item-info">
           <div class="sfp-item-name">${highlightMatch(item.name, q)}</div>
         </div>
       </div>
     `).join('');
 
+    attachItemListeners();
+  }
+
+  async function searchUsers(query) {
+    const q = query.trim();
+
+    if (q.length < 2) {
+      results.innerHTML = '<div class="sfp-empty">Type at least 2 characters...</div>';
+      filteredItems = [];
+      return;
+    }
+
+    results.innerHTML = '<div class="sfp-loading">Searching users...</div>';
+
+    try {
+      const baseUrl = window.location.origin;
+      const soql = `SELECT Id, Name, Email, Username, IsActive, SmallPhotoUrl FROM User WHERE Name LIKE '%${q}%' OR Email LIKE '%${q}%' OR Username LIKE '%${q}%' ORDER BY Name LIMIT 15`;
+
+      const response = await fetch(`${baseUrl}/services/data/${API_VERSION}/query?q=${encodeURIComponent(soql)}`, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      filteredItems = data.records || [];
+
+      if (filteredItems.length === 0) {
+        results.innerHTML = '<div class="sfp-empty">No users found</div>';
+        return;
+      }
+
+      selectedIndex = 0;
+      results.innerHTML = filteredItems.map((user, i) => `
+        <div class="sfp-item ${i === 0 ? 'selected' : ''}" data-index="${i}" data-type="user" data-id="${user.Id}">
+          <span class="sfp-item-icon ${user.IsActive ? 'user-icon' : 'inactive'}">${getInitials(user.Name)}</span>
+          <div class="sfp-item-info">
+            <div class="sfp-item-name">
+              ${highlightMatch(user.Name, q)}
+              <span class="sfp-badge ${user.IsActive ? 'active' : 'inactive'}">${user.IsActive ? 'Active' : 'Inactive'}</span>
+            </div>
+            <div class="sfp-item-meta">${user.Email || user.Username}</div>
+          </div>
+        </div>
+      `).join('');
+
+      attachItemListeners();
+
+    } catch (error) {
+      console.error('SF Pegasus: Error searching users', error);
+      results.innerHTML = `<div class="sfp-empty">Error searching users. Make sure you're logged in.</div>`;
+      filteredItems = [];
+    }
+  }
+
+  function attachItemListeners() {
     results.querySelectorAll('.sfp-item').forEach(item => {
       item.addEventListener('click', () => {
         const index = parseInt(item.dataset.index);
-        navigateTo(filteredItems[index]);
+        const type = item.dataset.type;
+        if (type === 'user') {
+          navigateToUser(filteredItems[index]);
+        } else {
+          navigateToSetup(filteredItems[index]);
+        }
       });
     });
   }
@@ -298,18 +456,35 @@ function createOverlay() {
     });
   }
 
-  function navigateTo(item) {
+  function navigateToSetup(item) {
     hide();
     const baseUrl = window.location.origin;
     window.location.href = baseUrl + item.path;
   }
 
+  function navigateToUser(user) {
+    hide();
+    const baseUrl = window.location.origin;
+    window.location.href = `${baseUrl}/lightning/r/User/${user.Id}/view`;
+  }
+
   input.addEventListener('input', (e) => {
-    render(e.target.value);
+    const query = e.target.value;
+
+    if (currentMode === 'setup') {
+      renderSetupResults(query);
+    } else {
+      // Debounce user search
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => searchUsers(query), 300);
+    }
   });
 
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      setMode(currentMode === 'setup' ? 'user' : 'setup');
+    } else if (e.key === 'ArrowDown') {
       e.preventDefault();
       selectedIndex = Math.min(selectedIndex + 1, filteredItems.length - 1);
       updateSelection();
@@ -320,7 +495,11 @@ function createOverlay() {
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (filteredItems[selectedIndex]) {
-        navigateTo(filteredItems[selectedIndex]);
+        if (currentMode === 'user') {
+          navigateToUser(filteredItems[selectedIndex]);
+        } else {
+          navigateToSetup(filteredItems[selectedIndex]);
+        }
       }
     } else if (e.key === 'Escape') {
       e.preventDefault();
@@ -330,36 +509,44 @@ function createOverlay() {
 
   backdrop.addEventListener('click', hide);
 
-  render();
   return overlay;
 }
 
-function show() {
+function show(mode = 'setup') {
   const el = createOverlay();
   el.classList.add('visible');
   isVisible = true;
+
+  currentMode = mode;
+  const tabs = el.querySelectorAll('.sfp-tab');
   const input = el.querySelector('.sfp-input');
+  const results = el.querySelector('.sfp-results');
+
+  tabs.forEach(tab => {
+    tab.classList.toggle('active', tab.dataset.mode === mode);
+  });
+
+  input.placeholder = mode === 'setup' ? 'Search Setup...' : 'Search users by name or email...';
   input.value = '';
   input.focus();
 
-  // Re-render with empty query
-  const results = el.querySelector('.sfp-results');
-  const q = '';
-  let filteredItems = SETUP_ITEMS.slice(0, 10);
-  let selectedIndex = 0;
-
-  function getInitials(name) {
-    return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
-  }
-
-  results.innerHTML = filteredItems.map((item, i) => `
-    <div class="sfp-item ${i === 0 ? 'selected' : ''}" data-index="${i}">
-      <span class="sfp-item-icon">${getInitials(item.name)}</span>
-      <div>
-        <div class="sfp-item-name">${item.name}</div>
+  if (mode === 'setup') {
+    // Render initial setup items
+    let filteredItems = SETUP_ITEMS.slice(0, 10);
+    function getInitials(name) {
+      return name.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase();
+    }
+    results.innerHTML = filteredItems.map((item, i) => `
+      <div class="sfp-item ${i === 0 ? 'selected' : ''}" data-index="${i}" data-type="setup">
+        <span class="sfp-item-icon">${getInitials(item.name)}</span>
+        <div class="sfp-item-info">
+          <div class="sfp-item-name">${item.name}</div>
+        </div>
       </div>
-    </div>
-  `).join('');
+    `).join('');
+  } else {
+    results.innerHTML = '<div class="sfp-empty">Type to search users...</div>';
+  }
 }
 
 function hide() {
@@ -369,26 +556,34 @@ function hide() {
   }
 }
 
-function toggle() {
+function toggle(mode = 'setup') {
   if (isVisible) {
     hide();
   } else {
-    show();
+    show(mode);
   }
 }
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'toggle-search') {
-    toggle();
+    toggle('setup');
+    sendResponse({ success: true });
+  } else if (message.action === 'toggle-user-search') {
+    toggle('user');
     sendResponse({ success: true });
   }
 });
 
-// Also listen for keyboard shortcut directly (Cmd/Ctrl + K as alternative)
+// Keyboard shortcut: Cmd/Ctrl + K for setup search
 document.addEventListener('keydown', (e) => {
   if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
     e.preventDefault();
-    toggle();
+    toggle('setup');
+  }
+  // Cmd/Ctrl + Shift + U for user search
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'u') {
+    e.preventDefault();
+    toggle('user');
   }
 });

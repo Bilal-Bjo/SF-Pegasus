@@ -24,17 +24,27 @@ Salesforce's UI requires too many clicks to reach common pages. SF Pegasus gives
 
 Press `Alt+Shift+S` or `Cmd/Ctrl+K` anywhere on Salesforce to open the command palette.
 
-- Type to search across 60+ Setup pages
+- **Setup tab**: Search across 60+ Setup pages instantly
+- **Users tab**: Search actual users via Salesforce API (by name, email, or username)
+- Use `Tab` to switch between Setup and Users mode
 - Use `↑↓` to navigate results
 - Press `Enter` to open
 - Press `Esc` to close
+
+### User Search
+
+The Users tab queries your org's User records in real-time:
+- Shows active/inactive status with color badges
+- Displays email below name
+- Click or Enter to open the user record
 
 ## Keyboard Shortcuts
 
 | Shortcut | Destination |
 |----------|-------------|
-| `Alt+Shift+S` | Open Command Palette |
-| `Cmd/Ctrl+K` | Open Command Palette |
+| `Alt+Shift+S` | Open Command Palette (Setup) |
+| `Cmd/Ctrl+K` | Open Command Palette (Setup) |
+| `Cmd/Ctrl+Shift+U` | Open Command Palette (Users) |
 | `Alt+Shift+F` | Flows |
 | `Alt+Shift+O` | Object Manager |
 | `Alt+Shift+D` | Debug Logs |
