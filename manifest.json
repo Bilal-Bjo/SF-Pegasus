@@ -3,7 +3,12 @@
   "name": "SF Pegasus",
   "version": "1.3.0",
   "description": "Swift navigation for Salesforce - Jump to Setup, Flows, Users and more with keyboard shortcuts",
-  "permissions": ["activeTab", "storage"],
+  "permissions": ["activeTab", "storage", "cookies"],
+  "host_permissions": [
+    "*://*.salesforce.com/*",
+    "*://*.force.com/*",
+    "*://*.salesforce-setup.com/*"
+  ],
   "action": {
     "default_popup": "popup.html",
     "default_icon": {

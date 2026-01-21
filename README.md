@@ -44,10 +44,10 @@ The Users tab queries your org's User records in real-time:
 |----------|-------------|
 | `Alt+Shift+S` | Open Command Palette (Setup) |
 | `Cmd/Ctrl+K` | Open Command Palette (Setup) |
+| `Alt+Shift+U` | Open Command Palette (Users) |
 | `Cmd/Ctrl+Shift+U` | Open Command Palette (Users) |
 | `Alt+Shift+F` | Flows |
 | `Alt+Shift+O` | Object Manager |
-| `Alt+Shift+D` | Debug Logs |
 
 Customize shortcuts at `chrome://extensions/shortcuts`
 

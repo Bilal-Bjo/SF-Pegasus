@@ -86,22 +86,18 @@ const SETUP_ITEMS = [
   { name: 'Sandboxes', path: '/lightning/setup/DataManagementCreateTestInstance/home', keywords: 'sandboxes environments' },
 ];
 
-const API_VERSION = 'v59.0';
 let overlay = null;
 let isVisible = false;
 let currentMode = 'setup'; // 'setup' or 'user'
 let searchTimeout = null;
 
-// Get the main org URL (not setup domain)
+// Get the base URL for navigation (used when clicking on a user result)
 function getOrgBaseUrl() {
   const host = window.location.host;
 
-  // If on setup domain, convert to main lightning domain
-  if (host.includes('.salesforce-setup.com')) {
-    // e.g., orgname--sandbox.sandbox.my.salesforce-setup.com -> orgname--sandbox.sandbox.lightning.force.com
-    return window.location.protocol + '//' + host
-      .replace('.my.salesforce-setup.com', '.lightning.force.com')
-      .replace('.sandbox.my.salesforce-setup.com', '.sandbox.lightning.force.com');
+  // Setup domains need to convert to main salesforce domain for navigation
+  if (host.includes('salesforce-setup.com')) {
+    return window.location.protocol + '//' + host.replace('salesforce-setup.com', 'salesforce.com');
   }
 
   return window.location.origin;
@@ -402,23 +398,13 @@ function createOverlay() {
     results.innerHTML = '<div class="sfp-loading">Searching users...</div>';
 
     try {
-      const baseUrl = getOrgBaseUrl();
-      const escapedQ = q.replace(/'/g, "\\'");
-      const soql = `SELECT Id, Name, Email, Username, IsActive, SmallPhotoUrl FROM User WHERE Name LIKE '%${escapedQ}%' OR Email LIKE '%${escapedQ}%' OR Username LIKE '%${escapedQ}%' ORDER BY Name LIMIT 15`;
+      // Use background script to make API call (bypasses CORS)
+      const data = await chrome.runtime.sendMessage({ action: 'searchUsers', query: q });
 
-      const response = await fetch(`${baseUrl}/services/data/${API_VERSION}/query?q=${encodeURIComponent(soql)}`, {
-        method: 'GET',
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error(`API error: ${response.status}`);
+      if (data.error) {
+        throw new Error(data.error);
       }
 
-      const data = await response.json();
       filteredItems = data.records || [];
 
       if (filteredItems.length === 0) {
@@ -545,7 +531,8 @@ function show(mode = 'setup') {
 
   input.placeholder = mode === 'setup' ? 'Search Setup...' : 'Search users by name or email...';
   input.value = '';
-  input.focus();
+  // Use setTimeout to ensure focus happens after overlay is fully visible
+  setTimeout(() => input.focus(), 0);
 
   if (mode === 'setup') {
     // Render initial setup items
