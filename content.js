@@ -92,6 +92,21 @@ let isVisible = false;
 let currentMode = 'setup'; // 'setup' or 'user'
 let searchTimeout = null;
 
+// Get the main org URL (not setup domain)
+function getOrgBaseUrl() {
+  const host = window.location.host;
+
+  // If on setup domain, convert to main lightning domain
+  if (host.includes('.salesforce-setup.com')) {
+    // e.g., orgname--sandbox.sandbox.my.salesforce-setup.com -> orgname--sandbox.sandbox.lightning.force.com
+    return window.location.protocol + '//' + host
+      .replace('.my.salesforce-setup.com', '.lightning.force.com')
+      .replace('.sandbox.my.salesforce-setup.com', '.sandbox.lightning.force.com');
+  }
+
+  return window.location.origin;
+}
+
 function createOverlay() {
   if (overlay) return overlay;
 
@@ -387,12 +402,13 @@ function createOverlay() {
     results.innerHTML = '<div class="sfp-loading">Searching users...</div>';
 
     try {
-      const baseUrl = window.location.origin;
-      const soql = `SELECT Id, Name, Email, Username, IsActive, SmallPhotoUrl FROM User WHERE Name LIKE '%${q}%' OR Email LIKE '%${q}%' OR Username LIKE '%${q}%' ORDER BY Name LIMIT 15`;
+      const baseUrl = getOrgBaseUrl();
+      const escapedQ = q.replace(/'/g, "\\'");
+      const soql = `SELECT Id, Name, Email, Username, IsActive, SmallPhotoUrl FROM User WHERE Name LIKE '%${escapedQ}%' OR Email LIKE '%${escapedQ}%' OR Username LIKE '%${escapedQ}%' ORDER BY Name LIMIT 15`;
 
       const response = await fetch(`${baseUrl}/services/data/${API_VERSION}/query?q=${encodeURIComponent(soql)}`, {
         method: 'GET',
-        credentials: 'same-origin',
+        credentials: 'include',
         headers: {
           'Accept': 'application/json'
         }
@@ -464,8 +480,9 @@ function createOverlay() {
 
   function navigateToUser(user) {
     hide();
-    const baseUrl = window.location.origin;
-    window.location.href = `${baseUrl}/lightning/r/User/${user.Id}/view`;
+    const baseUrl = getOrgBaseUrl();
+    // Navigate to User detail in Setup
+    window.location.href = `${baseUrl}/lightning/setup/ManageUsers/page?address=%2F${user.Id}%3Fnoredirect%3D1`;
   }
 
   input.addEventListener('input', (e) => {

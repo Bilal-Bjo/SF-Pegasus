@@ -16,8 +16,7 @@ const SF_PATTERNS = [
 // Direct navigation paths
 const SHORTCUT_PATHS = {
   'flows': '/lightning/setup/Flows/home',
-  'objects': '/lightning/setup/ObjectManager/home',
-  'debug': '/lightning/setup/ApexDebugLogs/home'
+  'objects': '/lightning/setup/ObjectManager/home'
 };
 
 function isSalesforceUrl(url) {
@@ -40,8 +39,11 @@ chrome.commands.onCommand.addListener(async (command) => {
   if (!tab?.url || !isSalesforceUrl(tab.url)) return;
 
   if (command === 'search') {
-    // Send message to content script to open search overlay
+    // Send message to content script to open setup search
     chrome.tabs.sendMessage(tab.id, { action: 'toggle-search' });
+  } else if (command === 'users') {
+    // Send message to content script to open user search
+    chrome.tabs.sendMessage(tab.id, { action: 'toggle-user-search' });
   } else {
     // Direct navigation for other shortcuts
     const path = SHORTCUT_PATHS[command];
