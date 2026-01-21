@@ -13,13 +13,16 @@ const SF_PATTERNS = [
   /^https?:\/\/([a-zA-Z0-9-]+)\.visualforce\.com/
 ];
 
-// Shortcut paths
+// Direct navigation paths
 const SHORTCUT_PATHS = {
-  'setup': '/lightning/setup/SetupOneHome/home',
   'flows': '/lightning/setup/Flows/home',
   'objects': '/lightning/setup/ObjectManager/home',
   'debug': '/lightning/setup/ApexDebugLogs/home'
 };
+
+function isSalesforceUrl(url) {
+  return SF_PATTERNS.some(pattern => pattern.test(url));
+}
 
 function getBaseUrl(url) {
   for (const pattern of SF_PATTERNS) {
@@ -33,14 +36,20 @@ function getBaseUrl(url) {
 
 // Listen for keyboard shortcut commands
 chrome.commands.onCommand.addListener(async (command) => {
-  const path = SHORTCUT_PATHS[command];
-  if (!path) return;
-
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-  if (!tab?.url) return;
+  if (!tab?.url || !isSalesforceUrl(tab.url)) return;
 
-  const baseUrl = getBaseUrl(tab.url);
-  if (!baseUrl) return;
-
-  chrome.tabs.update(tab.id, { url: baseUrl + path });
+  if (command === 'search') {
+    // Send message to content script to open search overlay
+    chrome.tabs.sendMessage(tab.id, { action: 'toggle-search' });
+  } else {
+    // Direct navigation for other shortcuts
+    const path = SHORTCUT_PATHS[command];
+    if (path) {
+      const baseUrl = getBaseUrl(tab.url);
+      if (baseUrl) {
+        chrome.tabs.update(tab.id, { url: baseUrl + path });
+      }
+    }
+  }
 });

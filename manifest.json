@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SF Pegasus",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Swift navigation for Salesforce - Jump to Setup, Flows, Debug Logs and more with keyboard shortcuts",
   "permissions": ["activeTab", "storage"],
   "action": {
@@ -20,13 +20,26 @@
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.lightning.force.com/*",
+        "*://*.salesforce.com/*",
+        "*://*.salesforce-setup.com/*",
+        "*://*.cloudforce.com/*",
+        "*://*.visualforce.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_end"
+    }
+  ],
   "commands": {
-    "setup": {
+    "search": {
       "suggested_key": {
         "default": "Alt+Shift+S",
         "mac": "Alt+Shift+S"
       },
-      "description": "Go to Setup"
+      "description": "Open Setup Search"
     },
     "flows": {
       "suggested_key": {
