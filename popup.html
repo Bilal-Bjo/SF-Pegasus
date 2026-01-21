@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SF Pegasus</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', system-ui, sans-serif;
+      background: #0d0d0d;
+      color: #e5e5e5;
+      width: 280px;
+      min-height: 100px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .header {
+      padding: 14px 16px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .header h1 {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fafafa;
+      letter-spacing: -0.2px;
+    }
+
+    .org-badge {
+      font-size: 10px;
+      padding: 3px 8px;
+      background: #1a1a1a;
+      border-radius: 4px;
+      color: #666;
+      max-width: 100px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .not-salesforce {
+      padding: 48px 24px;
+      text-align: center;
+      color: #444;
+    }
+
+    .not-salesforce p {
+      font-size: 12px;
+      line-height: 1.6;
+    }
+
+    .search-container {
+      padding: 12px 12px 8px;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 9px 12px;
+      background: #141414;
+      border: 1px solid #222;
+      border-radius: 6px;
+      color: #e5e5e5;
+      font-size: 12px;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    .search-input:focus {
+      border-color: #333;
+      background: #1a1a1a;
+    }
+
+    .search-input::placeholder {
+      color: #555;
+    }
+
+    .section {
+      padding: 6px 0 2px;
+    }
+
+    .section-title {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #444;
+      padding: 6px 16px 8px;
+    }
+
+    .shortcuts {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .shortcut {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      cursor: pointer;
+      transition: background 0.1s;
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .shortcut:hover,
+    .shortcut.selected {
+      background: #141414;
+    }
+
+    .shortcut.hidden {
+      display: none;
+    }
+
+    .shortcut-icon {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #1a1a1a;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #666;
+      flex-shrink: 0;
+    }
+
+    .shortcut-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .shortcut-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: #e5e5e5;
+      letter-spacing: -0.1px;
+    }
+
+    .shortcut-desc {
+      font-size: 10px;
+      color: #555;
+      margin-top: 2px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #1a1a1a;
+      margin: 6px 16px;
+    }
+
+    .no-results {
+      padding: 32px 20px;
+      text-align: center;
+      color: #444;
+      font-size: 12px;
+      display: none;
+    }
+
+    .footer {
+      padding: 10px 16px;
+      border-top: 1px solid #1a1a1a;
+    }
+
+    .footer-text {
+      font-size: 10px;
+      color: #333;
+    }
+
+    kbd {
+      background: #1a1a1a;
+      padding: 2px 5px;
+      border-radius: 3px;
+      font-family: inherit;
+      font-size: 9px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>SF Pegasus</h1>
+    <span class="org-badge" id="orgBadge">—</span>
+  </div>
+
+  <div id="notSalesforce" class="not-salesforce" style="display: none;">
+    <p>Open a Salesforce org to use shortcuts</p>
+  </div>
+
+  <div id="mainContent">
+    <div class="search-container">
+      <input type="text" class="search-input" id="searchInput" placeholder="Search..." autofocus>
+    </div>
+
+    <div class="no-results" id="noResults">No results</div>
+
+    <div class="section" id="quickSection">
+      <div class="section-title">Quick Access</div>
+      <div class="shortcuts">
+        <a class="shortcut" data-path="/lightning/setup/SetupOneHome/home" data-search="setup home settings">
+          <span class="shortcut-icon">S</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Setup</span>
+            <span class="shortcut-desc">Setup home</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/Flows/home" data-search="flows automation flow builder">
+          <span class="shortcut-icon">F</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Flows</span>
+            <span class="shortcut-desc">Flow Builder</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/ObjectManager/home" data-search="object manager objects fields sobjects">
+          <span class="shortcut-icon">O</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Object Manager</span>
+            <span class="shortcut-desc">Objects & fields</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/ApexDebugLogs/home" data-search="debug logs apex logging trace">
+          <span class="shortcut-icon">D</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Debug Logs</span>
+            <span class="shortcut-desc">Apex logs</span>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section" id="devSection">
+      <div class="section-title">Development</div>
+      <div class="shortcuts">
+        <a class="shortcut" data-path="/lightning/setup/ApexClasses/home" data-search="apex classes code">
+          <span class="shortcut-icon">AC</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Apex Classes</span>
+            <span class="shortcut-desc">Manage classes</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/ApexTriggers/home" data-search="apex triggers">
+          <span class="shortcut-icon">AT</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Apex Triggers</span>
+            <span class="shortcut-desc">Object triggers</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/_ui/common/apex/debug/ApexCSIPage" data-search="developer console dev console">
+          <span class="shortcut-icon">DC</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Developer Console</span>
+            <span class="shortcut-desc">Dev tools</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/LightningComponentBundles/home" data-search="lwc lightning web components">
+          <span class="shortcut-icon">LW</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">LWC</span>
+            <span class="shortcut-desc">Lightning components</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/FlexiPageList/home" data-search="app builder lightning pages flexipages">
+          <span class="shortcut-icon">LP</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Lightning Pages</span>
+            <span class="shortcut-desc">App Builder</span>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section" id="adminSection">
+      <div class="section-title">Administration</div>
+      <div class="shortcuts">
+        <a class="shortcut" data-path="/lightning/setup/ManageUsers/home" data-search="users manage">
+          <span class="shortcut-icon">U</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Users</span>
+            <span class="shortcut-desc">Manage users</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/Profiles/home" data-search="profiles permissions">
+          <span class="shortcut-icon">PR</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Profiles</span>
+            <span class="shortcut-desc">User profiles</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/PermSets/home" data-search="permission sets permsets">
+          <span class="shortcut-icon">PS</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Permission Sets</span>
+            <span class="shortcut-desc">Extra permissions</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/Roles/home" data-search="roles hierarchy">
+          <span class="shortcut-icon">R</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Roles</span>
+            <span class="shortcut-desc">Role hierarchy</span>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section" id="dataSection">
+      <div class="section-title">Data</div>
+      <div class="shortcuts">
+        <a class="shortcut" data-path="/lightning/o/Report/home" data-search="reports analytics">
+          <span class="shortcut-icon">RP</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Reports</span>
+            <span class="shortcut-desc">All reports</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/o/Dashboard/home" data-search="dashboards analytics charts">
+          <span class="shortcut-icon">DB</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Dashboards</span>
+            <span class="shortcut-desc">Visual charts</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/CustomMetadata/home" data-search="custom metadata types cmt">
+          <span class="shortcut-icon">CM</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Custom Metadata</span>
+            <span class="shortcut-desc">Metadata types</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/CustomSettings/home" data-search="custom settings">
+          <span class="shortcut-icon">CS</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Custom Settings</span>
+            <span class="shortcut-desc">Org settings</span>
+          </span>
+        </a>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="section" id="intSection">
+      <div class="section-title">Integration</div>
+      <div class="shortcuts">
+        <a class="shortcut" data-path="/lightning/setup/NamedCredential/home" data-search="named credentials api auth">
+          <span class="shortcut-icon">NC</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Named Credentials</span>
+            <span class="shortcut-desc">External auth</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/ConnectedApplication/home" data-search="connected apps oauth">
+          <span class="shortcut-icon">CA</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Connected Apps</span>
+            <span class="shortcut-desc">OAuth apps</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/SecurityRemoteProxy/home" data-search="remote site settings callouts">
+          <span class="shortcut-icon">RS</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Remote Sites</span>
+            <span class="shortcut-desc">Allowed callouts</span>
+          </span>
+        </a>
+        <a class="shortcut" data-path="/lightning/setup/ImportedPackage/home" data-search="installed packages managed">
+          <span class="shortcut-icon">IP</span>
+          <span class="shortcut-info">
+            <span class="shortcut-name">Installed Packages</span>
+            <span class="shortcut-desc">Managed pkgs</span>
+          </span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <span class="footer-text"><kbd>Alt+Shift+S</kbd> Setup · <kbd>Alt+Shift+F</kbd> Flows</span>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
