@@ -115,7 +115,7 @@ function createOverlay() {
         <button class="sfp-tab active" data-mode="setup">Setup</button>
         <button class="sfp-tab" data-mode="user">Users</button>
       </div>
-      <input type="text" class="sfp-input" placeholder="Search Setup..." autofocus>
+      <input type="text" class="sfp-input" placeholder="Search Setup..." autofocus autocomplete="one-time-code">
       <div class="sfp-results"></div>
       <div class="sfp-footer">
         <span><kbd>Tab</kbd> switch mode</span>
